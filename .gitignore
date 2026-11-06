@@ -1,0 +1,9 @@
+# planning and research material stays local
+PLAN*.md
+notes/
+papers/
+.DS_Store
+.venv/
+__pycache__/
+*.egg-info/
+runs/
