@@ -27,7 +27,7 @@ from ..human import HumanSimulator
 from ..schema import Event
 from ..tasks.spec import EpisodeView, Intervention, Task
 from ..verify import Verdict, verify
-from .policy import AgentInfo, Observation, PolicyFactory
+from .policy import AgentInfo, InfraError, Observation, PolicyFactory
 from .tokens import TOKENIZER_ID, count_tokens
 
 ACTION_TYPES = {"env", "msg", "spawn", "inspect", "kill", "finish", "noop"}
@@ -171,6 +171,8 @@ class Episode:
             a, obs = turn
             try:
                 action = self.policies[a.id].act(obs)
+            except InfraError:
+                raise
             except Exception as e:  # a crashing policy is the agent's failure, not the runtime's
                 action = {"_policy_error": f"{type(e).__name__}: {e}"}
             self.submit(a, action)

@@ -20,7 +20,7 @@ from typing import Any, Callable
 
 from .reward import reward
 from .runtime.episode import Episode, EpisodeResult
-from .runtime.policy import AgentInfo, Observation, PolicyFactory
+from .runtime.policy import AgentInfo, InfraError, Observation, PolicyFactory
 from .tasks.spec import Task
 
 
@@ -94,6 +94,8 @@ class ReOrgEnv:
                 return Turn(ep._info(a), obs)
             try:
                 action = ep.policies[a.id].act(obs)
+            except InfraError:
+                raise
             except Exception as e:
                 action = {"_policy_error": f"{type(e).__name__}: {e}"}
             ep.submit(a, action)

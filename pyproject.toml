@@ -9,6 +9,11 @@ dependencies = []
 [project.scripts]
 reorgbench = "reorgbench.cli:main"
 
+[project.optional-dependencies]
+anthropic = [
+    "anthropic>=2.6.0",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8",
