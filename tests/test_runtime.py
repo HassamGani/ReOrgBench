@@ -128,6 +128,22 @@ def test_hire_everyone_and_finish_fails():
         assert not res.verdict.success, t.id
 
 
+def test_goal_change_can_write_to_the_world():
+    import dataclasses
+
+    from reorgbench.oracle import oracle_factory
+    from reorgbench.runtime import Episode
+
+    iv = dataclasses.replace(T2.interventions[0], world_effects={
+        "tickets/T-18": {"subject": "Re: charged twice", "status": "open", "customer_id": "C-104", "body": "Any update?"}})
+    task = dataclasses.replace(T2, interventions=[iv])
+    res = Episode(task, oracle_factory(task)).run()
+    ev = next(e for e in res.events if e["type"] == "intervention")
+    assert ev["writes"] == ["tickets/T-18"]
+    assert res.world.objects["tickets/T-18"]["written_by"] == ev["id"]
+    assert res.verdict.success
+
+
 def test_fallback_round_fires_when_trigger_never_reached():
     res, _ = run_script(T3, {})
     assert res.interventions == [{"id": "cancel-legal", "round": 15, "fired_by": "fallback_round"}]

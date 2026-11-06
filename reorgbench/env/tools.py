@@ -282,5 +282,6 @@ def deliver_scheduled(world: World, rnd: int, log: AccessLog) -> list[dict[str, 
             v = world.get(f"vendors/{s['vendor_id']}", log)
             mid = world.next_id("inbox", "M-")
             world.put(f"inbox/{mid}", {"from": s["vendor_id"], "in_reply_to": s["in_reply_to"], "text": v["reply"]}, log)
-            out.append({"kind": "vendor_reply", "message_id": mid, "vendor_id": s["vendor_id"]})
+            out.append({"kind": "vendor_reply", "message_id": mid, "vendor_id": s["vendor_id"],
+                        "in_reply_to": s["in_reply_to"]})
     return out
