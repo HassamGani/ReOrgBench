@@ -43,6 +43,8 @@ class Checkpoint:
     negative: bool = False
     # object ids whose final versions realize this checkpoint; their last writers seed the causal graph
     realized_by: Callable[[World], list[str]] | None = None
+    # earlier checkpoints this one widens: they stay part of the goal inside it rather than being dropped
+    supersedes: list[str] = field(default_factory=list)
 
 
 def objs(*oids: str) -> Callable[[World], list[str]]:
