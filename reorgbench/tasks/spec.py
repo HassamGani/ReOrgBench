@@ -149,6 +149,7 @@ class Task:
     # Anything in this repo is public, so it can never be test.
     split: Literal["train", "dev", "test"] = "dev"
     template: str = "hand"   # scenario template; the test split holds out whole templates
+    today: str = "2026-10-15"  # every agent is told the date; tasks with date rules need it
 
     def __post_init__(self) -> None:
         if self.split not in SPLITS:

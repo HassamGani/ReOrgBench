@@ -31,7 +31,7 @@ def llm_factory(task: Task, orchestrator: LLMClient, subagents: LLMClient, log: 
 
     def make(info: AgentInfo) -> LLMPolicy:
         client = orchestrator if info.role == "orchestrator" else subagents
-        return LLMPolicy(info, client, log, round_cap=b.round_cap, action_cap=b.action_cap)
+        return LLMPolicy(info, client, log, round_cap=b.round_cap, action_cap=b.action_cap, today=task.today)
 
     return make
 

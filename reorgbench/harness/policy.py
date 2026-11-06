@@ -39,9 +39,10 @@ class CallLog:
 
 
 class LLMPolicy:
-    def __init__(self, info: AgentInfo, client: LLMClient, log: CallLog, *, round_cap: int, action_cap: int):
+    def __init__(self, info: AgentInfo, client: LLMClient, log: CallLog, *, round_cap: int, action_cap: int,
+                 today: str = "2026-10-15"):
         self.info, self.client, self.log, self.round_cap = info, client, log, round_cap
-        self.system = system_prompt(info, round_cap=round_cap, action_cap=action_cap)
+        self.system = system_prompt(info, round_cap=round_cap, action_cap=action_cap, today=today)
         self.history: list[dict[str, str]] = []
         self.calls = 0
 
