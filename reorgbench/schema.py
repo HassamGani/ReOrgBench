@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
-SCHEMA_VERSION = "0.1.0"
+SCHEMA_VERSION = "0.2.0"
 
 EVENT_TYPES = frozenset(
     {
@@ -18,6 +18,7 @@ EVENT_TYPES = frozenset(
         "kill",
         "relay",         # a message sent during a killed agent's final round
         "finish",
+        "ask_human",     # the orchestrator asked the simulated person; payload has the answer and match log
         "noop",
         "error",         # malformed action or gating violation; payload.kind says which
         "intervention",  # the simulated human changed the goal

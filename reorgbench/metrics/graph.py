@@ -25,7 +25,7 @@ from typing import Any, Iterable
 from ..env.world import World
 from ..tasks.spec import Task
 
-ACTION_TYPES = frozenset({"env", "msg", "relay", "spawn", "inspect", "kill", "finish", "error"})
+ACTION_TYPES = frozenset({"env", "msg", "relay", "spawn", "inspect", "kill", "finish", "ask_human", "error"})
 
 _ID = re.compile(r"\b[A-Z][A-Z0-9]*(?:-[A-Za-z0-9]+)+\b")      # INV-5521, PX-14b, QA-55X1
 _NUM = re.compile(r"(?<![\w.\-])\d+(?:\.\d+)?(?![\w.\-])")     # 240.0, $1200; not the 8812 in CNQ-8812
