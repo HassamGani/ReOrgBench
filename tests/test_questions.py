@@ -136,3 +136,13 @@ def test_only_the_orchestrator_prompt_offers_the_question_action():
     obs = Observation("orch", "orchestrator", 2, 0, [
         {"kind": "human_answer", "content": {"question": "ok?", "answer": "Yes."}, "event": 3}])
     assert "answered your question (ok?): Yes." in render_observation(obs, 12)
+
+
+def test_no_questions_variant_refuses_asks_and_drops_them_from_the_prompt():
+    ask = {"type": "ask_human", "question": "Should the other onboarding steps keep their wording and order?"}
+    res = Episode(T1, lambda info: _Once(ask), questions=False).run()
+    assert [e["payload"]["kind"] for e in errors(res)] == ["permission"]
+    assert not any(e["type"] == "ask_human" for e in res.events)
+    info = AgentInfo("orch", "orchestrator", None, 0, "", 0, ["docs.read"], T1.catalog)
+    off = system_prompt(info, round_cap=12, action_cap=24, questions=False)
+    assert '"ask_human"' not in off and "ask the person" not in off and '"finish"' in off
