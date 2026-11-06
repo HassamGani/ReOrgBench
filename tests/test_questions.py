@@ -13,6 +13,7 @@ from reorgbench.metrics.graph import salient_tokens
 from reorgbench.runtime import Episode
 from reorgbench.runtime.policy import AgentInfo, Observation
 from reorgbench.tasks.hand import HAND_TASKS
+from reorgbench.tasks.registry import all_tasks
 
 T1 = HAND_TASKS["hand-01-onboarding-doc"]
 T3 = HAND_TASKS["hand-03-vendor-onboarding"]
@@ -48,7 +49,7 @@ def test_phase_decides_which_facts_are_on_offer():
 
 
 def test_keyword_matcher_finds_each_fact_from_its_own_description():
-    for task in HAND_TASKS.values():
+    for task in all_tasks().values():
         for p in range(len(task.phases)):
             offered = facts_for_phase(task.human_facts, p)
             for f in offered:
@@ -56,7 +57,7 @@ def test_keyword_matcher_finds_each_fact_from_its_own_description():
 
 
 def test_facts_never_give_values_the_goal_does_not():
-    for task in HAND_TASKS.values():
+    for task in all_tasks().values():
         for f in task.human_facts:
             phases = f.phases if f.phases is not None else range(len(task.phases))
             goal_tokens = set().union(*(salient_tokens(task.phases[p].goal) for p in phases))

@@ -4,6 +4,9 @@ It is the solvability gate (every released task must pass with it), the source o
 action count per phase), and the ceiling in the baseline ladder. It talks only through ordinary
 actions: facts travel as "FACT name=<json>" lines, roles are announced as "TEAM role=id" lines,
 phase instructions as "PHASE k", and workers report "DONE PHASE k" to their parent.
+
+Plans name workers by label. A label is a role, or "role#n" for a further agent of that role, so a plan can split
+a role's work across several agents (the brief's "ROLE <label>" line tells each which part is theirs).
 """
 
 from __future__ import annotations
@@ -17,10 +20,15 @@ from .tasks.spec import Step, Task
 
 _PLACEHOLDER = re.compile(r"\{(\w+)\}")
 _FACT = re.compile(r"^FACT (\w+)=(.*)$", re.M)
-_TEAM = re.compile(r"^TEAM (\w+)=(\w+)$", re.M)
 _PHASE = re.compile(r"^PHASE (\d+)$", re.M)
 _DONE = re.compile(r"^DONE PHASE (\d+)$", re.M)
 _RESET = re.compile(r"^RESET$", re.M)
+_ROLE = re.compile(r"^ROLE ([\w#]+)$", re.M)
+_TEAM = re.compile(r"^TEAM ([\w#]+)=(\w+)$", re.M)
+
+
+def role_of_label(label: str) -> str:
+    return label.split("#", 1)[0]
 
 
 def fill(value: Any, facts: dict[str, Any]) -> tuple[Any, set[str]]:
@@ -145,6 +153,7 @@ class _StepRunner:
 class OracleWorker:
     def __init__(self, info: AgentInfo, ctl: OracleController):
         self.info, self.ctl = info, ctl
+        self.label = info.role
         self.run = _StepRunner()
         self.phase = 0
         self.team: dict[str, list[str]] = {}
@@ -154,6 +163,9 @@ class OracleWorker:
         self.started = False
 
     def _absorb(self, text: str, sender: str | None = None) -> None:
+        m = _ROLE.search(text)
+        if m and not self.started:
+            self.label = m.group(1)
         for name, raw in _FACT.findall(text):
             self.run.facts.setdefault(name, json.loads(raw))
             if sender is not None:
@@ -168,7 +180,7 @@ class OracleWorker:
                 self.phase = k
                 if _RESET.search(text):
                     self.run.steps = []
-                self.run.steps += self.ctl.steps(k, self.info.role)
+                self.run.steps += self.ctl.steps(k, self.label)
                 self.started = True
 
     def _outbox(self) -> dict[str, list[str]]:
@@ -176,7 +188,7 @@ class OracleWorker:
         out: dict[str, list[str]] = {}
         for name in self.run.facts:
             for role in self.ctl.consumers(name, self.phase):
-                if role == self.info.role:
+                if role == self.label:
                     continue
                 for aid in self.team.get(role, []):
                     if (name, aid) not in self.sent:
@@ -222,6 +234,7 @@ class OracleOrchestrator:
         self.kills: list[tuple[str, bool]] = []   # (role, immediately)
         self.spawns: list[str] = []
         self.pending_spawns = 0
+        self.pending_labels: list[str] = []
         self.instruct: list[str] = []
         self.resets: list[str] = []
         self._enter_phase(0)
@@ -253,7 +266,7 @@ class OracleOrchestrator:
         for it in obs.items:
             k, c = it["kind"], it["content"]
             if k == "spawned":
-                self.role_of[c["agent_id"]] = c["role"]
+                self.role_of[c["agent_id"]] = self.pending_labels.pop(0)
                 self.alive.append(c["agent_id"])
                 self.assigned[c["agent_id"]] = self.phase
                 self.pending_spawns -= 1
@@ -282,12 +295,13 @@ class OracleOrchestrator:
         if self.spawns:
             role = self.spawns.pop(0)
             self.pending_spawns += 1
+            self.pending_labels.append(role)
             needed = self.ctl.needs(role, self.phase)
             leaving = {r for r, _ in self.kills}
             team = [a for a in self.alive if self.role_of[a] not in leaving]
             brief = "\n".join(filter(None, [f"PHASE {self.phase}", f"ROLE {role}", self._team_lines(team),
                                             fact_lines(self.run.facts, needed)]))
-            return {"type": "spawn", "role": role, "brief": brief, "intro": team}
+            return {"type": "spawn", "role": role_of_label(role), "brief": brief, "intro": team}
         if self.pending_spawns:
             return {"type": "noop"}
 

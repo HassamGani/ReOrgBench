@@ -6,8 +6,9 @@ from reorgbench.oracle import oracle_factory
 from reorgbench.runtime import Episode, Recorder, Replayer
 from reorgbench.schema import Event, read_jsonl, validate_trace, write_jsonl
 from reorgbench.tasks.hand import HAND_TASKS
+from reorgbench.tasks.registry import all_tasks
 
-TASKS = list(HAND_TASKS.values())
+TASKS = list(all_tasks().values())
 
 
 def dump(res):
