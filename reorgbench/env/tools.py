@@ -157,6 +157,8 @@ def _tickets_close(w: World, a: dict, log: AccessLog, rnd: int) -> dict:
     d = w.get(oid, log)
     if d is None:
         return {"error": "no such ticket"}
+    if d.get("status") == "closed":
+        return {"ok": True, "note": "already closed"}
     d["status"] = "closed"
     w.put(oid, d, log)
     return {"ok": True}
