@@ -31,6 +31,12 @@ def role_of_label(label: str) -> str:
     return label.split("#", 1)[0]
 
 
+def crew_of(label: str) -> str:
+    """Agents that are one crew of a role: "support", "support#2"... A queue's side job ("support#j2") is its own."""
+    base, _, n = label.partition("#")
+    return base if not n or n.isdigit() else label
+
+
 def fill(value: Any, facts: dict[str, Any]) -> tuple[Any, set[str]]:
     """Substitute {fact} placeholders. A string that is exactly one placeholder keeps the fact's type."""
     missing: set[str] = set()
@@ -313,7 +319,7 @@ class OracleOrchestrator:
         self.kills = [(a, n) for a, n in self.kills if a in self.alive]
         for i, (aid, now) in enumerate(self.kills):
             # of several agents of one role leaving, the latest hire goes first
-            later = [a for a, _ in self.kills if self.role_of[a].split("#")[0] == self.role_of[aid].split("#")[0]
+            later = [a for a, _ in self.kills if crew_of(self.role_of[a]) == crew_of(self.role_of[aid])
                      and self.alive.index(a) > self.alive.index(aid)]
             if now or ((aid, self.assigned[aid]) in self.done and not later):
                 self.alive.remove(aid)
