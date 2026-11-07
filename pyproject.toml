@@ -13,6 +13,9 @@ reorgbench = "reorgbench.cli:main"
 anthropic = [
     "anthropic>=2.6.0",
 ]
+openai = [
+    "openai>=2.0.0",
+]
 
 [dependency-groups]
 dev = [

@@ -1,7 +1,7 @@
 """Model clients behind one small interface, so the harness is provider-neutral.
 
-A client turns (system, messages) into a Completion. Only Anthropic is wired up so far; other providers
-plug in by implementing `complete`.
+A client turns (system, messages) into a Completion. Anthropic and OpenAI are wired up; other providers plug
+in by implementing `complete`.
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ class AnthropicClient:
             # still failing after the SDK's retries: the provider's fault, not the agent's
             raise InfraError(f"{type(e).__name__}: {e}") from e
         except a.APIStatusError as e:
-            if e.status_code >= 500 or e.status_code == 529:
+            if _infra_status(e):
                 raise InfraError(f"{type(e).__name__}: {e}") from e
             raise
         text = "".join(b.text for b in r.content if b.type == "text")
@@ -67,6 +67,46 @@ class AnthropicClient:
                           {"cache_read": getattr(u, "cache_read_input_tokens", 0) or 0,
                            "cache_write": getattr(u, "cache_creation_input_tokens", 0) or 0,
                            "uncached_in": u.input_tokens})
+
+
+def _infra_status(e: Any) -> bool:
+    """Server trouble, or an account that can't be billed or isn't let in: nothing the agent did."""
+    msg = str(e).lower()
+    return (e.status_code >= 500 or e.status_code in (401, 402, 403, 429, 529) or "credit balance" in msg
+            or "insufficient_quota" in msg or "billing" in msg)
+
+
+class OpenAIClient:
+    """OpenAI chat completions via the official SDK. Reasoning effort is passed through when set; the API
+    caches repeated prompt prefixes on its own."""
+
+    def __init__(self, model: str, *, effort: str | None = "medium", max_tokens: int = 16000):
+        import openai
+
+        self._openai = openai
+        self.client = openai.OpenAI(max_retries=4)
+        self.model, self.effort, self.max_tokens = model, effort, max_tokens
+
+    def complete(self, system: str, messages: list[dict[str, str]]) -> Completion:
+        kwargs: dict[str, Any] = dict(model=self.model, max_completion_tokens=self.max_tokens,
+                                      messages=[{"role": "system", "content": system}, *messages])
+        if self.effort:
+            kwargs["reasoning_effort"] = self.effort
+        t0 = time.monotonic()
+        o = self._openai
+        try:
+            r = self.client.chat.completions.create(**kwargs)
+        except (o.RateLimitError, o.APIConnectionError, o.InternalServerError) as e:
+            raise InfraError(f"{type(e).__name__}: {e}") from e
+        except o.APIStatusError as e:
+            if _infra_status(e):
+                raise InfraError(f"{type(e).__name__}: {e}") from e
+            raise
+        ch, u = r.choices[0], r.usage
+        cached = getattr(getattr(u, "prompt_tokens_details", None), "cached_tokens", 0) or 0
+        return Completion(ch.message.content or "", u.prompt_tokens, u.completion_tokens, ch.finish_reason or "",
+                          r.model, getattr(r, "_request_id", "") or r.id, time.monotonic() - t0,
+                          {"cache_read": cached, "cache_write": 0, "uncached_in": u.prompt_tokens - cached})
 
 
 class FakeClient:
@@ -84,8 +124,10 @@ class FakeClient:
 
 
 def make_client(spec: str, **kw: Any) -> LLMClient:
-    """'anthropic:claude-haiku-5-5' or a bare Claude model id."""
+    """'anthropic:claude-haiku-5-5', 'openai:<model>', or a bare Claude model id."""
     provider, _, model = spec.partition(":") if ":" in spec else ("anthropic", "", spec)
     if provider == "anthropic":
         return AnthropicClient(model, **kw)
+    if provider == "openai":
+        return OpenAIClient(model, **kw)
     raise ValueError(f"no client for provider {provider!r} yet")
