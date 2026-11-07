@@ -336,8 +336,10 @@ class OracleOrchestrator:
         if self.pending_spawns:
             return {"type": "noop"}
 
-        if self.instruct:
-            return self._instruct(self.instruct.pop(0), reset=False)
+        while self.instruct:   # an agent already let go needs no phase notice
+            msg = self._instruct(self.instruct.pop(0), reset=False)
+            if msg["to"]:
+                return msg
 
         act = self.run.next_action()
         if act:
