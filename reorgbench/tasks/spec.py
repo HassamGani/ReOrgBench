@@ -130,7 +130,7 @@ class Intervention:
     trigger: Trigger
     fallback_round: int | None = None
     min_gap: int = 3
-    # objects the human writes when the change fires (dual control, as in tau2-bench): e.g. the
+    # objects the human writes when the change fires (dual control): e.g. the
     # customer replying on a ticket. Written with the intervention event as their provenance.
     world_effects: dict[str, dict[str, Any]] = field(default_factory=dict)
 
