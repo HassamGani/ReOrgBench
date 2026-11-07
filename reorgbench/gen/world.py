@@ -66,8 +66,13 @@ class Acct:
     invoice: str | None = None
     inv_amount: float | None = None
     prior_refund: float = 0.0            # refunded on the invoice before the task starts
+    billed: int | None = None            # seats billing charges for, where that differs from the record
     tags: set[str] = field(default_factory=set)   # "closed", "namesake", "excluded", ...
 
     @property
     def seats(self) -> int:
         return self.row["seats"]
+
+    @property
+    def bseats(self) -> int:
+        return self.billed if self.billed is not None else self.row["seats"]
