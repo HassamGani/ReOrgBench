@@ -107,9 +107,9 @@ Your tools:
 include the specific values (ids, amounts, references) others will need."""
 
 
-def _fmt(x: Any, limit: int = 4000) -> str:
+def _fmt(x: Any, limit: int = 8000) -> str:
     s = x if isinstance(x, str) else json.dumps(x, ensure_ascii=False)
-    return s if len(s) <= limit else s[:limit] + f" ... [{len(s) - limit} more characters]"
+    return s if len(s) <= limit else s[:limit] + f" ... [{len(s) - limit} more characters cut]"
 
 
 def render_observation(obs: Observation, round_cap: int) -> str:
