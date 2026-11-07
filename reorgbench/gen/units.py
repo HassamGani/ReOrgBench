@@ -93,6 +93,11 @@ class Notify(Unit):
 @dataclass
 class Credit(Unit):
     rate: float = 0.0
+    cap: float | None = None     # most any one account gets
+
+    def amount(self, seats: int) -> float:
+        v = round(seats * self.rate, 2)
+        return v if self.cap is None else min(v, self.cap)
 
 
 @dataclass
