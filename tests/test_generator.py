@@ -124,3 +124,13 @@ def test_cancel_checks_wait_for_the_news_to_reach_each_agent():
     worker = told["recipients"][0]
     assert not late(worker, told["round"]) and late(worker, told["round"] + 1)
     assert not late("never-told", fr + 1)
+
+
+def test_generation_ignores_the_hash_seed():
+    import os, subprocess, sys
+    code = ("from reorgbench.gen import generate, Knobs;"
+            "t = generate('region-migration', 4, Knobs(n=16, crew=2, changes=('CANCEL', 'MODIFY'), traps=3, code=True, "
+            "budget=1.5)); print(t.budgets, [(i.trigger.kind, i.trigger.params, i.fallback_round) for i in t.interventions])")
+    outs = {subprocess.run([sys.executable, "-c", code], env={**os.environ, "PYTHONHASHSEED": h}, capture_output=True,
+                           text=True, check=True).stdout for h in ("1", "2")}
+    assert len(outs) == 1

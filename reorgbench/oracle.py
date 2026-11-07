@@ -210,7 +210,7 @@ class OracleWorker:
         """Facts this agent holds that a teammate it knows of will need, keyed by recipient."""
         out: dict[str, list[str]] = {}
         for name in self.run.facts:
-            for role in self.ctl.consumers(name, self.phase):
+            for role in sorted(self.ctl.consumers(name, self.phase)):
                 if role == self.label:
                     continue
                 for aid in self.team.get(role, []):
