@@ -18,7 +18,7 @@ class Role:
     services: frozenset[str]
 
 
-SHARED_SERVICES = frozenset({"docs"})
+SHARED_SERVICES = frozenset({"docs", "chat"})
 
 ROLES: dict[str, Role] = {
     r.name: r
