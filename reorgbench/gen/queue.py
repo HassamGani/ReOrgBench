@@ -87,11 +87,10 @@ def _merge_staffing(main: list[list[str]], side: Counter) -> list[list[str]]:
 
 
 def sample(seed: int) -> list[tuple[Template, Knobs]]:
-    """Every public story once, in a seeded order. The first is the job the person changes; the side jobs are
+    """Three public stories, in a seeded order. The first is the job the person changes; the side jobs are
     smaller and fixed."""
     rng = random.Random(f"{QUEUE_ID}:{seed}:knobs")
-    order = [t for t in TEMPLATES.values() if t.split == "train"]
-    rng.shuffle(order)
+    order = rng.sample(sorted((t for t in TEMPLATES.values() if t.split == "train"), key=lambda t: t.id), 3)
     main, *side = order
     k = main.sample(rng)
     while not k.messy:   # the job that changes is a hard one
