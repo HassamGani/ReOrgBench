@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import json
 import statistics
+import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
@@ -40,6 +42,19 @@ def llm_factory(task: Task, orchestrator: LLMClient, subagents: LLMClient, log: 
     return make
 
 
+@lru_cache(maxsize=1)
+def code_version() -> dict[str, Any]:
+    """The commit the benchmark ran from, and whether the tree had changes on top of it."""
+    root = Path(__file__).resolve().parents[2]
+    try:
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip()
+        dirty = bool(subprocess.run(["git", "status", "--porcelain", "reorgbench"], cwd=root, capture_output=True,
+                                    text=True).stdout.strip())
+    except OSError:
+        return {}
+    return {"commit": head, "dirty": dirty}
+
+
 def _settings(c: LLMClient) -> dict[str, Any]:
     return {k: getattr(c, k) for k in ("effort", "max_tokens") if hasattr(c, k)}
 
@@ -59,7 +74,7 @@ def run_one(task: Task, k: int, out: Path, orchestrator: LLMClient, subagents: L
               "matcher": ep.matcher.id if questions else None,
               "questions_allowed": questions, "probes": res.probes,
               "settings": {"orchestrator": _settings(orchestrator), "subagents": _settings(subagents)},
-              "wall_s": round(time.monotonic() - t0, 1)}
+              "wall_s": round(time.monotonic() - t0, 1), "code": code_version()}
     write_jsonl(d / f"run{k}.jsonl", header, [Event(**e) for e in res.events])
     s = score(task, res)
     (d / f"run{k}.score.json").write_text(json.dumps(s, indent=1, default=str))

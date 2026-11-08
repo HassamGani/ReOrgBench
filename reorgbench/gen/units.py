@@ -70,10 +70,11 @@ class Move(Unit):
     """Set one field on every in-scope customer record."""
     field_name: str = ""
     target: str = ""
+    hold: set = field(default_factory=set)   # records the billing sync manages: the edit has to set sync_hold too
 
     def step(self, c: str) -> Step:
-        return Step("db.update", {"table": "customers", "row_id": c, "fields": {self.field_name: self.target}},
-                    tag=f"move:{c}")
+        fields = {self.field_name: self.target, **({"sync_hold": True} if c in self.hold else {})}
+        return Step("db.update", {"table": "customers", "row_id": c, "fields": fields}, tag=f"move:{c}")
 
     def revert(self, c: str, original: Any) -> Step:
         return Step("db.update", {"table": "customers", "row_id": c, "fields": {self.field_name: original}},
