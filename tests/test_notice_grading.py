@@ -1153,3 +1153,12 @@ def test_dev_corpus_2_no_false_negatives():
 def test_dev_corpus_2_agreement():
     agree = sum(_graded2(c) == c["told"] for c in _DEV2)
     assert agree / len(_DEV2) >= 0.96, agree   # 116 of 120 when written
+
+
+def test_a_correction_that_names_the_figure_it_replaces():
+    # seen in probe Z: the old figure is mentioned last, as the one being replaced
+    texts = ["We've applied a service credit of $116 to your account (C-3977).",
+             "A quick correction: the service credit for your account (C-3977) has been increased to $174. This "
+             "replaces the earlier figure of $116."]
+    assert current_says(texts, 174.0, [116.0]) and told_value(texts, [174.0])
+    assert not current_says(texts, 116.0, [174.0])

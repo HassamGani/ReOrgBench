@@ -330,8 +330,10 @@ _POST_NEG = re.compile(r"^\W*(?:[\w-]+\s+){0,4}?(?:has been|have been|was|were|i
                        r"^\W*(?:[\w-]+\s+){0,3}?(?:may|might|could)\s+(?:still\s+)?change\b|"
                        r"^\W*(?:[\w-]+\s+){0,3}?belongs? to (?:a different|another|someone)", re.I)
 _PRE_NEG = re.compile(r"\byou(?:'ve)?\s+(?:asked|mentioned|said|quoted|saw|were expecting|expected)\b|\bwhether\b|"
-                      r"(?:\bnot|n't|\bno longer|\bpreviously|\boriginally|\bformerly|\bold|\breplac(?:es|ing)|"
-                      r"\bsupersed\w*)\W+(?:\w+\W+){0,2}$|\b(?:instead of|rather than|in place of)\b|"
+                      r"(?:\bnot|n't|\bno longer|\bpreviously|\boriginally|\bformerly|\bold)\W+(?:\w+\W+){0,2}$|"
+                      r"\b(?:replac(?:es|ing)|supersed(?:es|ing))\W+(?:\w+\W+){0,5}$|\b(?:instead of|rather than|in place of)\b|"
+                      r"\b(?:earlier|previous|prior|original|old|first)\s+(?:\w+\s+)?(?:figure|amount|price|credit|total|"
+                      r"quote|number|reference|window)(?:\s+of)?\W*$|"
                       r"\b(?:vs\.?|versus|compared (?:to|with)|up from|down from)\W*$|"
                       r"\b(?:withdrawn|withdrew|cancel+ed|voided|revoked|reversed|retired)\W*$", re.I)
 _ACCT = re.compile(r"\b(?:C|ACC)-\d{3,}\b", re.I)
