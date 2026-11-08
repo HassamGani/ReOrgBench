@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from reorgbench.gen.units import current_says, is_retraction, says, told_and_not_retracted, told_value
+from reorgbench.gen.units import current_says, is_retraction, says, still_told, told_and_not_retracted, told_value
 
 PRICE, PRICE_NEW, PRICE_OLD = [120.0], [130.0], 120.0
 MW, MW_NEW = ["MW-6246"], ["MW-6400"]
@@ -1171,3 +1171,16 @@ def test_a_polite_if_doesnt_hedge_the_figure():
     assert told_value(texts, ["AR-4113"], "C-3581") and current_says(texts, "AR-4113", [], "C-3581")
     assert not told_value(["If approved, your credit would be $40. Account: C-1."], [40.0], "C-1")
     assert not told_value(["If you upgrade, your new price is $988. Account: C-1."], [988.0], "C-1")
+
+
+def test_not_the_earlier_amount_points_away_from_it():
+    # seen in probe AH: the corrected figure, then "not the amount in our previous reply"
+    texts = ["You are owed a service credit of $52. Change reference: CHG-1. Account: C-5974.",
+             "A correction: the service credit for your account C-5974 is $78 (not the amount in our previous "
+             "reply), and it will be taken off your next invoice. Account: C-5974."]
+    assert told_value(texts, [78.0], "C-5974") and current_says(texts, 78.0, [52.0], "C-5974")
+    assert still_told(told_value(texts, [78.0], "C-5974"), texts, [78.0], [52.0], "C-5974")
+    # pointing back at the earlier figure still reaffirms it
+    back = ["Your credit is $52. Account: C-1.", "Please disregard our last message. Account: C-1.",
+            "Sorry for the confusion: the amount in our previous reply is correct. Account: C-1."]
+    assert told_value(back, [52.0], "C-1")
