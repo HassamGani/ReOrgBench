@@ -230,9 +230,10 @@ _ANCHOR = re.compile(rf"{_CHANGE}|\b(?:plan|price|pricing|region|figure|amount|t
 _ABORT = re.compile(rf"(?<!\bthe )(?<!\ba )\b(?:cancel+(?:ed|ing)?|call(?:ed|ing)? off|postpon(?:e|ed|ing)|"
                     rf"paus(?:e|ed|ing)|delay(?:ed|ing)|defer(?:red|ring)?|shelv(?:e|ed|ing)|scrapp(?:ed|ing)|"
                     rf"halt(?:ed|ing)|suspend(?:ed|ing)?|revers(?:e|ed|ing)|roll(?:ed|ing)? back|undo(?:ne)?|undid|"
-                    rf"hold(?:ing)? off(?: on)?)\s+(?:on\s+|with\s+)?(?:(?:the|your|this|that|our|any)\s+)?"
+                    rf"stopp(?:ed|ing)|hold(?:ing)? off(?: on)?)\s+(?:on\s+|with\s+)?(?:(?:the|your|this|that|our|any)\s+)?"
                     rf"(?:\S+\s+){{0,2}}?{_CHANGE}|\bput(?:ting)?\s+(?:the|your|this|that|our)\s+(?:\S+\s+){{0,2}}?"
-                    rf"{_CHANGE}\s+on hold")
+                    rf"{_CHANGE}(?:\s+\S+){{0,6}}?\s+on hold|"
+                    rf"\b(?:paused|stopped|halted|suspended|put on hold)\s+(?:it|this|that)\s+(?:for\s+(?:you|your|acct)|while)\b")
 _WITHDRAW = re.compile("|".join([
     # the earlier message was a mistake
     r"\b(?:sent|went out|posted)\b(?:\s+\S+){0,5}?\s+(?:in error|by mistake|mistakenly|accidentally|erroneously|"
@@ -251,6 +252,8 @@ _WITHDRAW = re.compile("|".join([
     rf"\b(?:figure|price|amount|quote|number|reference|window|fig)\s+(?:i|we)\s+(?:\S+\s+){{0,3}}?(?:is|was)\s+{_BAD}",
     rf"\bfig\s+(?:is|was)\s+{_BAD}",
     # the change is off
+    r"\bshould(?: not|n't) have (?:been )?(?:sent|told|included|notified|contacted|gone out)\b|"
+    r"\bshould have been (?:held|kept|left|excluded)(?: out| back)?\b",
     r"\bcredit\b(?:\s+\S+){0,3}?\s+(?:is|are|was|has been|will be)\s+(?:now\s+)?(?:on hold|paused|cancel+ed|reversed|"
     r"withdrawn|held back|not (?:being )?(?:applied|issued))\b",
     r"\b(?:reversed|cancel+ed|withdrawn|removed|clawed back|voided)\s+(?:the|your|this|that)\s+(?:\S+\s+){0,2}?credit\b",
@@ -322,12 +325,15 @@ _AFFIRM = re.compile(r"\b(?:details|information|figures?|price|amount|total|refe
 # a figure the clause then says was dropped: "the $40 one has been removed", "MW-6219 belongs to another customer"
 _POST_NEG = re.compile(r"^\W*(?:[\w-]+\s+){0,4}?(?:has been|have been|was|were|is|are)\s+(?:now\s+|since\s+)?"
                        r"(?:removed|reversed|cancel+ed|voided|withdrawn|replaced|superseded|declined|rejected|wrong|incorrect|"
-                       r"a typo|a mistake|in error|no longer (?:valid|correct|in use|being used|used|applicable))\b|"
+                       r"a typo|a mistake|in error|retired|revoked|expired|deactivated|no longer (?:valid|correct|in use|being used|"
+                       r"used|applicable))\b|^\W*(?:[\w-]+\s+){0,3}?(?:as\s+)?(?:not|un)\s*(?:yet\s+)?(?:confirmed|final)\b|"
+                       r"^\W*(?:[\w-]+\s+){0,3}?(?:may|might|could)\s+(?:still\s+)?change\b|"
                        r"^\W*(?:[\w-]+\s+){0,3}?belongs? to (?:a different|another|someone)", re.I)
 _PRE_NEG = re.compile(r"\byou(?:'ve)?\s+(?:asked|mentioned|said|quoted|saw|were expecting|expected)\b|\bwhether\b|"
                       r"(?:\bnot|n't|\bno longer|\bpreviously|\boriginally|\bformerly|\bold|\breplac(?:es|ing)|"
                       r"\bsupersed\w*)\W+(?:\w+\W+){0,2}$|\b(?:instead of|rather than|in place of)\b|"
-                      r"\b(?:vs\.?|versus|compared (?:to|with)|up from|down from)\W*$", re.I)
+                      r"\b(?:vs\.?|versus|compared (?:to|with)|up from|down from)\W*$|"
+                      r"\b(?:withdrawn|withdrew|cancel+ed|voided|revoked|reversed|retired)\W*$", re.I)
 _ACCT = re.compile(r"\b(?:C|ACC)-\d{3,}\b", re.I)
 _CODE = re.compile(r"(?<![a-z0-9])[a-z]{2,}-?\d{3,}(?![a-z0-9])", re.I)
 # a figure offered as a possibility or an example, not as what applies to this customer
@@ -390,8 +396,8 @@ def _events(texts: list[str], values: list[Any] | None, account: str | None = No
             if not clause or not clause.strip():
                 continue
             figs = _figures(clause, values)
-            stated = [v for m, v in figs if not _PRE_NEG.search(clause[:m.start()])
-                      and not _POST_NEG.search(clause[m.end():]) and not _HEDGE.search(clause[:m.start()])]
+            negated = [v for m, v in figs if _PRE_NEG.search(clause[:m.start()]) or _POST_NEG.search(clause[m.end():])]
+            stated = [v for m, v in figs if v not in negated and not _HEDGE.search(clause[:m.start()])]
             ids = {x.upper() for x in _ACCT.findall(clause)}
             if account and ids and account.upper() not in ids:   # another account's figure
                 stated = []
@@ -411,7 +417,7 @@ def _events(texts: list[str], values: list[Any] | None, account: str | None = No
                 kind = "notice"
             elif kind in (None, "stay") and _AFFIRM.search(c):
                 kind = "affirm"
-            yield kind, pos, {v for m, v in figs if v is not None} - pos, aimed, bool(stated)
+            yield kind, pos, {v for v in negated if v is not None} - pos, aimed, bool(stated)
 
 
 def _verdict(text: str, values: list[Any] | None, account: str | None = None) -> str | None:

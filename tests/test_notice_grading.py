@@ -1134,3 +1134,22 @@ def test_another_accounts_figure_isnt_this_ones(reply, value, account, want):
 def test_a_possible_figure_isnt_a_notice(reply):
     value = float(re.search(r"\$([\d,]+(?:\.\d+)?)", reply).group(1).replace(",", ""))
     assert not told_value([reply], [value])
+
+
+# a second round, written as careful and as sloppy agents write, with the customer's account id: held out when first
+# measured (FN 2 of 69, FP 9 of 51), then used to tune, so now a development set too
+_DEV2 = json.loads((Path(__file__).parent / "data" / "grader_dev_corpus_2.json").read_text())
+
+
+def _graded2(c):
+    a = c["account"]
+    return told_value(c["replies"], [c["value"]], a) and current_says(c["replies"], c["value"], c.get("old") or [], a)
+
+
+def test_dev_corpus_2_no_false_negatives():
+    assert [c["id"] for c in _DEV2 if c["told"] and not _graded2(c)] == []
+
+
+def test_dev_corpus_2_agreement():
+    agree = sum(_graded2(c) == c["told"] for c in _DEV2)
+    assert agree / len(_DEV2) >= 0.96, agree   # 116 of 120 when written
