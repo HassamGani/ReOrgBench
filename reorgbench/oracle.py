@@ -79,6 +79,8 @@ def extract(result: Any, spec: Any) -> Any:
         v = m.group(1) if m.groups() else m.group(0)
     if typ == "number":
         v = float(v)
+    if isinstance(spec, dict) and "sum" in spec:   # a field added up over the items that match, e.g. invoice lines
+        v = sum(x[spec["sum"]] for x in v if all(x.get(k) == w for k, w in spec.get("where", {}).items()))
     if isinstance(spec, dict) and "times" in spec:   # a derived amount, e.g. seats x a per-seat rate
         v = round(float(v) * spec["times"] + spec.get("plus", 0), 2)
         if spec.get("cap") is not None:

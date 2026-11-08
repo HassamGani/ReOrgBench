@@ -1031,3 +1031,15 @@ def test_staying_active_takes_an_archive_notice_back():
 def test_price_increase_taken_back(later):
     tell = "Your new monthly price is $480.00 from 1 December."
     assert told_value([tell], [480.0]) and not told_value([tell, later], [480.0])
+
+
+@pytest.mark.parametrize("later", [
+    "Hello, please disregard our earlier message on this ticket about an SLA service credit for incident INC-7695. "
+    "Because you buy from us through a reseller partner, any credit for this incident will be passed on through your "
+    "partner rather than taken off an invoice from us. Sorry for the confusion.",
+    "Please ignore our message about the INC-7695 outage credit; your reseller will handle it.",
+    "Correction: the service credit doesn't apply to your account after all.",
+])
+def test_service_credit_taken_back(later):
+    tell = "Under our SLA you are owed a service credit of $56 for incident INC-7695, taken off your next invoice."
+    assert told_and_not_retracted([tell], [56.0]) and not told_and_not_retracted([tell, later], [56.0])

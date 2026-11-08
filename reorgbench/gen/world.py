@@ -67,11 +67,18 @@ class Acct:
     inv_amount: float | None = None
     prior_refund: float = 0.0            # refunded on the invoice before the task starts
     billed: int | None = None            # seats billing charges for, where that differs from the record
+    charged: dict[str, int] = field(default_factory=dict)   # seat lines on the invoice by kind, where it has lines
     tags: set[str] = field(default_factory=set)   # "closed", "namesake", "excluded", ...
 
     @property
     def seats(self) -> int:
         return self.row["seats"]
+
+    @property
+    def qty(self) -> int:
+        """Seats a per-seat refund or notice is worked out on: the overcharged invoice lines where there are any,
+        else the record."""
+        return self.charged["seats"] + self.charged.get("added", 0) if self.charged else self.seats
 
     @property
     def bseats(self) -> int:

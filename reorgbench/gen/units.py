@@ -124,6 +124,7 @@ class Credit(Unit):
 class Refund(Unit):
     rate: float = 0.0
     olds: list[float] = field(default_factory=list)
+    card: str = ""    # where invoices have charge lines: the rate card the overcharged ones were billed on
 
 
 @dataclass
@@ -202,7 +203,7 @@ def rerun_tests(w: World) -> None:
 # hold, back or stay about anything else (a Legacy subscription, a collections hold, "back to you") don't count.
 
 _CHANGE = (r"(?:(?:move|migration|transfer|switch|transition|change|cutover|relocation|upgrade|rollout|retirement|"
-           r"sunset|maintenance|window|refund|sla credit|notice|archive|archival|increase)s?|moving|migrating|switchover|"
+           r"sunset|maintenance|window|refund|(?:sla |service |outage )+credit|notice|archive|archival|increase)s?|moving|migrating|switchover|"
            r"archiving)\b")
 _NOTE = r"(?:message|e-?mail|note|reply|response|update|notice|notification|announcement|communication)s?\b"
 _NEG = r"(?:not|\S*n't|no longer|never)"
