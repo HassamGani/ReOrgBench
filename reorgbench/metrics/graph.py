@@ -30,6 +30,7 @@ ACTION_TYPES = frozenset({"env", "msg", "relay", "spawn", "inspect", "kill", "fi
 _ID = re.compile(r"\b[A-Z][A-Z0-9]*(?:-[A-Za-z0-9]+)+\b")      # INV-5521, PX-14b, QA-55X1
 _NUM = re.compile(r"(?<![\w.\-])\d+(?:\.\d+)?(?![\w.\-])")     # 240.0, $1200; not the 8812 in CNQ-8812
 MIN_AMOUNT = 100
+_SMALL = re.compile(r"(?:\$\s?|(?<![=!<>])=\s?)(\d+(?:\.\d+)?)(?![\w.\-])")
 
 
 def _canon(n: str) -> str:
@@ -42,6 +43,8 @@ def salient_tokens(x: Any, planted: Iterable[str] = ()) -> set[str]:
     s = x if isinstance(x, str) else json.dumps(x, sort_keys=True)
     out = set(_ID.findall(s))
     out |= {_canon(n) for n in _NUM.findall(s) if float(n) >= MIN_AMOUNT}
+    # smaller sums count where they're plainly money or a handed-over figure: "$40", "credit=40"; a bare "40 seats" doesn't
+    out |= {_canon(n) for n in _SMALL.findall(s) if float(n) >= 10}
     out |= {t for t in planted if t in s}
     return out
 
