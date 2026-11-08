@@ -297,6 +297,9 @@ _STAY = re.compile("|".join([
     rf"\b(?:you|your(?:\s+\S+)?\s+(?:plan|region|hosting|subscription|account))\b{_AUX}\s+{_NEG}\s+"
     rf"(?:be\s+|been\s+|going to\s+)?chang\w*{_BUT}",
 ]))
+_NO_STAY = re.compile(r"(?:\b(?:not|cannot|unable)\b|n't\b)(?:\s+(?:be|able|to|make|makes|an|any|exceptions?|allowed|"
+                      r"possible|in|a|position|offer|agree|let|allow|afford|we|us|really|currently|going|for|"
+                      r"this|that|one|case|accounts?|grant))*\s+(?:to\s+)?$")
 _NOTICE = re.compile(r"\b(?:is|are|will be|'ll be|has been|have been|being|'re|'s|was|were)\s+(?:now\s+|also\s+)?"
                      r"(?:moving|moved|migrated|migrating|switched|switching|transferred|refunded|credited|archived)\b|"
                      r"\bnew (?:monthly )?"
@@ -348,7 +351,9 @@ def _cue(c: str) -> tuple[str | None, bool]:
             if not re.search(rf"{_NEG}\s+(?:\S+\s+)?$|\b(?:no need to|please|kindly|avoid|you (?:should|may|might|can|"
                              r"need to|could))\s+$", c[:m.start()]):
                 return "retract", bool(re.search(r"\bfig\b", m.group()))
-    return ("stay", False) if _STAY.search(c) else (None, False)
+    # "we can't make an exception to keep you on the current price" turns a request down, it doesn't keep them
+    stays = [m for m in _STAY.finditer(c) if not _NO_STAY.search(c[:m.start()])]
+    return ("stay", False) if stays else (None, False)
 
 
 def _events(texts: list[str], values: list[Any] | None):

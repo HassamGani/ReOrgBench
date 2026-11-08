@@ -222,3 +222,12 @@ def test_messy_overcharge_refunds_are_summed_from_invoice_lines():
     assert next(cp for cp in t.phases[0].checkpoints if cp.id == "refunded").check(w, None)
     t2, _ = build(TEMPLATES["overcharge-refund"], 5, replace(k, messy=False))   # standard worlds have no lines
     assert not any(o.startswith("ledger.charges/") for o in t2.initial_objects)
+
+
+def test_a_partial_refund_never_matches_another_line_on_its_invoice():
+    for t in all_tasks().values():
+        o = t.initial_objects
+        for e, d in o.items():
+            if e.startswith("ledger.entries/E-P") and d["kind"] == "refund":
+                lines = [c for k, c in o.items() if k.startswith("ledger.charges/") and c["invoice_id"] == d["invoice_id"]]
+                assert d["amount"] not in {c["amount"] for c in lines}, (t.id, e)
