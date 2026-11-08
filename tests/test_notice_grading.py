@@ -1162,3 +1162,12 @@ def test_a_correction_that_names_the_figure_it_replaces():
              "replaces the earlier figure of $116."]
     assert current_says(texts, 174.0, [116.0]) and told_value(texts, [174.0])
     assert not current_says(texts, 116.0, [174.0])
+
+
+def test_a_polite_if_doesnt_hedge_the_figure():
+    # seen in probe AC: the condition is the customer's wish, not the figure
+    texts = ["Your account is being archived. If you would like it restored, please quote archive reference AR-4113 "
+             "when you contact us. Reference: CHG-51015. Account: C-3581."]
+    assert told_value(texts, ["AR-4113"], "C-3581") and current_says(texts, "AR-4113", [], "C-3581")
+    assert not told_value(["If approved, your credit would be $40. Account: C-1."], [40.0], "C-1")
+    assert not told_value(["If you upgrade, your new price is $988. Account: C-1."], [988.0], "C-1")
