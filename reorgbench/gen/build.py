@@ -1037,8 +1037,9 @@ def runbook(g: Gen, steps: str) -> str:
     return f"{subject}: get it done the way the current runbook for it in our docs says."
 
 
-def make_task(g: Gen, attempt: int = 0) -> tuple[Task, Gen]:
-    """The plan half: phases, checks, changes and mutants over a finished world."""
+def make_task(g: Gen, attempt: int = 0, late: bool = True) -> tuple[Task, Gen]:
+    """The plan half: phases, checks, changes and mutants over a finished world. late=False keeps the last change
+    from bringing in a late account (an ops queue's side job, whose company already has one)."""
     template, seed, knobs = g.template, g.seed, g.knobs
     g.ledger_initial = {o for o in g.objects if o.startswith("ledger.entries/")}
     g.in_scope = list(g.cohort)
@@ -1054,7 +1055,7 @@ def make_task(g: Gen, attempt: int = 0) -> tuple[Task, Gen]:
     for k, kind in enumerate(knobs.changes, start=1):
         trigger = first_trigger(g) if k == 1 else NEVER   # later ones are set from the oracle's runs in calibrate
         text, effects, changed = template.change(g, kind)
-        if knobs.messy and k == len(knobs.changes) and kind != "CANCEL" and "refunded" not in g.units \
+        if late and knobs.messy and k == len(knobs.changes) and kind != "CANCEL" and "refunded" not in g.units \
                 and g.units["told"].rate is not None and template.truth_key:
             # stories whose notice is an amount, that need no invoice, and whose source of truth is billing, which
             # the new account's billing record then agrees with
