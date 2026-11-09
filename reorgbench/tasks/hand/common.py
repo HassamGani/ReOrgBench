@@ -44,7 +44,8 @@ def entries(w: World, kind: str) -> list[dict[str, Any]]:
 
 def unchanged(w: World, oid: str) -> bool:
     obj = w.objects.get(oid)
-    return obj is not None and obj["version"] == 0
+    # never written, or written and put back exactly as it started: what's judged is the final state
+    return obj is not None and (obj["version"] == 0 or ("initial" in obj and obj["data"] == obj["initial"]))
 
 
 def written_after(w: World, oid: str, event_id: int | None) -> bool:

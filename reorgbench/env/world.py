@@ -35,7 +35,8 @@ class World:
         # environment-side deliveries due in a later round, e.g. vendor replies
         self.scheduled: list[dict[str, Any]] = []
         for oid, data in (objects or {}).items():
-            self.objects[oid] = {"data": copy.deepcopy(data), "version": 0, "written_by": None}
+            self.objects[oid] = {"data": copy.deepcopy(data), "version": 0, "written_by": None,
+                                 "initial": copy.deepcopy(data)}
 
     @staticmethod
     def collection_of(oid: str) -> str:
@@ -58,6 +59,7 @@ class World:
             "data": copy.deepcopy(data),
             "version": (prev["version"] + 1) if prev else 1,
             "written_by": log.event_id if log is not None else None,
+            **({"initial": prev["initial"]} if prev and "initial" in prev else {}),
         }
         if log is not None:
             log.write(oid)
