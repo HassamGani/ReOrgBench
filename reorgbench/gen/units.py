@@ -44,11 +44,14 @@ def says(text: str, value: Any) -> bool:
 
 
 def current_says(texts: list[str], value: Any, olds: list[Any], account: str | None = None) -> bool:
-    """The last figure stated (not one being negated or taken back) is the current value rather than a superseded one."""
+    """The last figure stated (not one being negated or taken back) is the current value rather than a superseded one.
+    A correction stating some other figure ("the correct true-up is $734") supersedes it too."""
     last = False
-    for kind, pos, _, _, _ in _events(texts, [value, *olds], account):
+    for kind, pos, _, _, stated in _events(texts, [value, *olds], account):
         if kind != "retract" and not (kind == "stay" and not pos) and pos:
             last = value in pos
+        elif stated == _CORRECTED and kind != "retract":
+            last = False
     return last
 
 
@@ -248,6 +251,7 @@ _WITHDRAW = re.compile("|".join([
     r"too (?:soon|early))",
     r"\b(?:mistakenly|accidentally|erroneously|wrongly|incorrectly)\s+(?:\S+\s+)?(?:sent|told|said|informed|notified|"
     r"included|listed|contacted|emailed|messaged|stated|quoted)",
+    r"(?<=hold off on )(?:the\s+)?fig\b|"
     r"\bjumped the gun|\bwrong (?:customer|account|ticket|person|recipient)|\btreat\b.*\bas void",
     rf"{_NOTE}(?:\s+\S+){{0,6}}?\s+(?:was|is|were)\s+(?:\S+\s+)?(?:{_BAD}|(?:meant|intended) for (?:another|a different|"
     r"someone))",
@@ -305,7 +309,7 @@ _STAY = re.compile("|".join([
     rf"\bnothing\b(?!\s+else)(?:\s+\S+){{0,3}}?\s+chang\w*{_BUT}.*\b(?:for now|for the time being|at this time|right now|"
     r"at the moment|yet)\b",
     rf"(?:\bno|\bnot be any|n't be any)\s+changes?\s+(?:\S+\s+){{0,2}}?(?:to|for|on)\s+(?:you\b|your\s+(?:\S+\s+)?(?:plan|"
-    rf"account|region|hosting|subscription)\b(?!')){_BUT}|\bno changes?\s+(?:\S+\s+){{0,2}}?(?:made|happening|planned)\b",
+    rf"account|region|hosting|subscription|invoice|bill)\b(?!')){_BUT}|\bno changes?\s+(?:\S+\s+){{0,2}}?(?:made|happening|planned)\b",
     rf"\b(?:you|your(?:\s+\S+)?\s+(?:plan|region|hosting|subscription|account))\b{_AUX}\s+{_NEG}\s+"
     rf"(?:be\s+|been\s+|going to\s+)?chang\w*{_BUT}",
 ]))
@@ -335,11 +339,13 @@ _POST_NEG = re.compile(r"^\W*(?:[\w-]+\s+){0,4}?(?:has been|have been|was|were|i
                        r"^\W*(?:[\w-]+\s+){0,3}?(?:may|might|could)\s+(?:still\s+)?change\b|"
                        r"^\W*(?:[\w-]+\s+){0,3}?belongs? to (?:a different|another|someone)", re.I)
 # "the $1,180 figure left out your add-on seats": the figure named as a thing being discussed, not stated as yours
-_MENTION = re.compile(r"^\W*(?:figure|quote|amount|number)\b(?!\s+(?:is|of|for|applies|stands)\b)", re.I)
+_MENTION = re.compile(r"^\W*(?:figure|quote|amount|number|estimate|projection)\b(?!\s+(?:is|of|for|applies|stands)\b)", re.I)
 # "that $760 refund was for account C-3003": the figure belongs to someone else
 _FOR_ACCT = re.compile(r"^\W*(?:[\w-]+\s+){0,3}?(?:was|is|were)\s+(?:actually\s+|really\s+)?for\s+(?:account\s+|customer\s+)?"
                        r"((?:C|ACC)-\d{3,})", re.I)
 _PRE_NEG = re.compile(r"\byou(?:'ve)?\s+(?:asked|mentioned|said|quoted|saw|were expecting|expected)\b|\bwhether\b|"
+                      r"\byou\s+(?:may|might)\s+have\s+(?:seen|heard|read)\b|"
+                      r"\b(?:last|previous|prior)\s+(?:year|cycle|period)'s\s+(?:\S+\s+){0,3}?(?:was|were|came to)\s+(?:a\s+|an\s+)?\W*$|"
                       r"(?:\bnot|n't|\bno longer|\bpreviously|\boriginally|\bformerly|\bold)\W+(?:\w+\W+){0,2}$|"
                       r"\b(?:replac(?:es|ing)|supersed(?:es|ing))\W+(?:\w+\W+){0,5}$|\b(?:instead of|rather than|in place of)\b|"
                       r"\b(?:earlier|previous|prior|original|old|first)\s+(?:\w+\s+)?(?:figure|amount|price|credit|total|"
@@ -352,7 +358,9 @@ _CODE = re.compile(r"(?<![a-z0-9])[a-z]{2,}-?\d{3,}(?![a-z0-9])", re.I)
 _HEDGE = re.compile(r"\b(?:if|unless|should you|once (?:approved|confirmed))\b(?!\s+(?:you(?:'d| would)?\s+)?(?:like|want|wish|need|prefer)\b)|\b(?:would|could|might|may)\s+(?:\w+\s+)?"
                     r"(?:be|come to|cost|total|work out)\b|\byou'd be\b|\beligible for\b|\bup to\b|\bfor example\b|"
                     r"\be\.g\.|\bsuch as\b|\blike yours\b|\beither\b|\bat most\b|\bno more than\b|\bone of (?:the\s+)?(?:two|several|these|those)\b|\b(?:standard|list|typical)\s+(?:\w+\s+)?(?:credit|price|rate|"
-                    r"refund|amount)\b|\bworks? out to\b", re.I)
+                    r"refund|amount)\b|\bworks? out to\b|"
+                    r"\b(?:rough(?:ly)?|guess|probably|approximately|estimated?|projected|ballpark)\b|"
+                    r"\bsomewhere\s+(?:around|near|between)\b|\baround\s*$", re.I)
 
 
 def _figures(clause: str, values: list[Any] | None) -> list[tuple[re.Match, Any]]:
@@ -398,13 +406,25 @@ def _cue(c: str) -> tuple[str | None, bool]:
     return ("stay", False) if stays else (None, False)
 
 
+# a reply putting a figure right; any other figure it then states replaces the one we were told about
+_CORRECTING = re.compile(r"\b(?:correction|corrected|correct myself|typo|the correct|the right (?:figure|amount|total)|"
+                         r"(?:revised|updated|amended) (?:figure|amount|total|price)|stays? at|remains? at)\b")
+_OPTIONS = re.compile(r"\b(?:two|three|several|a few|some) options\b|\boption\s+(?:a|1)\b.*\boption\s+(?:b|2)\b",
+                      re.I | re.S)
+_PER_UNIT = re.compile(r"^\s*(?:per|a|each|/)\s*(?:seat|user|licen[cs]e|head)s?\b|^\s*each\b", re.I)
+_CORRECTED = 2   # an "any figure stated" flag (truthy) marking a clause that corrects to a figure we don't know
+
+
 def _events(texts: list[str], values: list[Any] | None, account: str | None = None):
     """Each clause of each reply in turn, as (kind, values stated, values negated, aimed at one figure, any figure
     stated). kind is "retract", "stay", "notice" (announces the change without a cue against it), "affirm" (says
     what was sent earlier still stands) or None."""
     for text in texts:
         others = False
+        prev_cue = False
         # a reply that names only some other account (not this customer's) is about that account throughout
+        # a reply laying out options ("Option A: ... Option B: ...") states none of them as the customer's figure
+        options = bool(_OPTIONS.search(text))
         named = {x.upper() for x in _ACCT.findall(text)}
         elsewhere = bool(account and named and account.upper() not in named)
         for clause in _SPLIT.split(text.replace("’", "'").replace("*", "")):
@@ -417,7 +437,7 @@ def _events(texts: list[str], values: list[Any] | None, account: str | None = No
                 return bool(f and account and f.group(1).upper() != account.upper())
             negated = [v for m, v in figs if _PRE_NEG.search(clause[:m.start()]) or _POST_NEG.search(clause[m.end():])
                        or _MENTION.match(clause[m.end():]) or moved(m)]
-            stated = [v for m, v in figs if v not in negated and not _HEDGE.search(clause[:m.start()])]
+            stated = [] if options else [v for m, v in figs if v not in negated and not _HEDGE.search(clause[:m.start()])]
             ids = {x.upper() for x in _ACCT.findall(clause)}
             if elsewhere or (account and ids and account.upper() not in ids):   # another account's figure
                 stated = []
@@ -439,7 +459,12 @@ def _events(texts: list[str], values: list[Any] | None, account: str | None = No
                                                 for m in _AFFIRM.finditer(c)):
                 # "is $78 (not the amount in our previous reply)" points away from the earlier figure, not back at it
                 kind = "affirm"
-            yield kind, pos, {v for v in negated if v is not None} - pos, aimed, bool(stated)
+            cue = bool(_CORRECTING.search(c))   # the cue sits in this clause or the one just before it
+            correcting, prev_cue = cue or prev_cue, cue
+            unknown = [m for m, v in figs if v is None and v not in negated and not _HEDGE.search(clause[:m.start()])
+                       and not _PER_UNIT.match(clause[m.end():])]
+            yield (kind, pos, {v for v in negated if v is not None} - pos, aimed,
+                   _CORRECTED if (unknown and not pos and correcting and not elsewhere) else bool(stated))
 
 
 def _verdict(text: str, values: list[Any] | None, account: str | None = None) -> str | None:
@@ -505,10 +530,29 @@ def set_judge(judge) -> None:
     _JUDGE = judge
 
 
+# words that make a ticket more than a plain notice: the rules don't settle those, the judge does
+_NOT_PLAIN = re.compile(r"\b(?:or|between|range|estimat\w*|likely|probabl\w*|tentativ\w*|pending|review\w*|hold|"
+                        r"walk\w*|correct\w*|revis\w*|updat\w*|typo|mistake|error|wrong|instead|option\w*|either|if|"
+                        r"unless|depend\w*|approx\w*|around|about|roughly|guess|project\w*|last|previous\w*|prior|"
+                        r"earlier|was|were|used to|not|no|never|no longer|disregard|ignore|cancel\w*|withdr\w*|"
+                        r"retract\w*|paus\w*|delay\w*|postpon\w*|instead|replac\w*|supersed\w*|another|other|both|"
+                        r"each|per|subtotal|plus|minus|added|deduct\w*|adjust\w*|thereabouts|confirm\w*|until)\b|n't\b",
+                        re.I)
+
+
 def _plain(texts: list[str], values: list[Any], olds: list[Any], account: str | None) -> bool:
-    """Every clause is either neutral or a plain notice, no figure is negated, and no superseded figure appears."""
+    """A ticket the rules can read alone: one figure in it, the value, for at most this customer's account, and
+    nothing hedged, corrected, held, compared or put in another period. Anything else goes to the judge."""
     for kind, pos, neg, _, _ in _events(texts, [*values, *olds], account):
         if kind in ("retract", "stay", "affirm") or neg or (pos & set(olds)):
+            return False
+    want = {v for v in values}
+    for text in texts:
+        if _NOT_PLAIN.search(text):
+            return False
+        if {x.upper() for x in _ACCT.findall(text)} - ({account.upper()} if account else set()):
+            return False
+        if any(v not in want for _, v in _figures(text.replace("’", "'"), list(values))):
             return False
     return True
 
