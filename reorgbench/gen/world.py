@@ -69,6 +69,8 @@ class Acct:
     billed: int | None = None            # seats billing charges for, where that differs from the record
     charged: dict[str, int] = field(default_factory=dict)   # seat lines on the invoice by kind, where it has lines
     tags: set[str] = field(default_factory=set)   # "closed", "namesake", "excluded", ...
+    base: int | None = None              # a seat count the notice is worked out against: it is on the record's
+                                         # seats above or below it, not on all of them
 
     @property
     def seats(self) -> int:
@@ -77,8 +79,10 @@ class Acct:
     @property
     def qty(self) -> int:
         """Seats a per-seat refund or notice is worked out on: the overcharged invoice lines where there are any,
-        else the record."""
-        return self.charged["seats"] + self.charged.get("added", 0) if self.charged else self.seats
+        else the record (the gap to base, where there is one)."""
+        if self.charged:
+            return self.charged["seats"] + self.charged.get("added", 0)
+        return abs(self.seats - self.base) if self.base is not None else self.seats
 
     @property
     def bseats(self) -> int:
