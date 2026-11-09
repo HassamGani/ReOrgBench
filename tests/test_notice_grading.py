@@ -1212,3 +1212,18 @@ def test_held_out_round_h1_patterns():
     # controls: the customer's own account named, or a figure 'for' their own account, still tells
     assert told_value(["The refund for account C-3030 was processed. The total refunded is $760."], [760.0], "C-3030")
     assert told_value(["That $760 refund is for account C-3030, yours."], [760.0], "C-3030")
+
+
+def test_disregard_the_earlier_figure_keeps_the_one_this_reply_states():
+    # probe AQ: every Essentials correction ended "Please disregard the earlier figure." and was read as taking all back
+    first = "Based on your 12 seats at $45 per seat, your new monthly price will be $540.00. Account: C-2842."
+    fix = ("A quick correction to our earlier message: the new Essentials price is lower than we said. Based on your 12 "
+           "seats at $44 per seat, your new monthly price will be $528.00. Please disregard the earlier figure. "
+           "Account: C-2842.")
+    assert told_value([first, fix], [528.0], "C-2842") and current_says([first, fix], 528.0, [540.0], "C-2842")
+    assert not told_value([first, fix], [540.0], "C-2842")
+    assert told_value([first, "Please disregard the earlier figure. Your new total is $528.00."], [528.0], "C-2842")
+    # on its own it takes the earlier figure back; a whole message or notice disregarded still takes everything back
+    assert not told_value([first, "Please disregard the earlier figure."], [540.0], "C-2842")
+    assert not told_value([first, "Please disregard our earlier message."], [540.0], "C-2842")
+    assert not told_value([first, "Please disregard the previous price notice."], [540.0], "C-2842")

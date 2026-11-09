@@ -228,6 +228,9 @@ _SPECIFIC = re.compile(r"\b(?:duplicate|copy|twice|repeat\w*|automated|auto-gene
 _GENERIC = re.compile(rf"^\W*(?:(?:all of\s+)?(?:that|this|it|everything|the above)\b|(?:(?:my|our|the|that|this|any|"
                       rf"these|those)\s+)?(?:\S+\s+){{0,2}}?{_NOTE}|what (?:i|we)\b|(?:my|our|the)?\s*(?:previous|"
                       rf"earlier|last|prior|first|original|initial)\b)")
+# "disregard the earlier figure" takes back what was said before, not the figure this reply states
+_EARLIER_FIG = re.compile(rf"\b(?:earlier|previous|prior|old|original|first|initial|last|incorrect|wrong)\s+(?:monthly\s+)?"
+                          rf"(?:figures?|prices?|amounts?|totals?|quotes?|numbers?)\b(?!\s+{_NOTE})")
 _ANCHOR = re.compile(rf"{_CHANGE}|\b(?:plan|price|pricing|region|figure|amount|total|reference|fig)\b")
 _ABORT = re.compile(rf"(?<!\bthe )(?<!\ba )\b(?:cancel+(?:ed|ing)?|call(?:ed|ing)? off|postpon(?:e|ed|ing)|"
                     rf"paus(?:e|ed|ing)|delay(?:ed|ing)|defer(?:red|ring)?|shelv(?:e|ed|ing)|scrapp(?:ed|ing)|"
@@ -384,7 +387,7 @@ def _cue(c: str) -> tuple[str | None, bool]:
             hit = bool(_GENERIC.search(obj) or _ANCHOR.search(obj)) or (
                 not obj.strip(" .!,") and not c[:m.start()].rstrip().endswith(" to"))
         if hit and not _SPECIFIC.search(obj):
-            return "retract", bool(re.search(r"\bfig\b", obj))
+            return "retract", "earlier" if _EARLIER_FIG.search(obj) else bool(re.search(r"\bfig\b", obj))
     for p in (_WITHDRAW, _ABORT):
         for m in p.finditer(c):
             if not re.search(rf"{_NEG}\s+(?:\S+\s+)?$|\b(?:no need to|please|kindly|avoid|you (?:should|may|might|can|"
@@ -466,7 +469,9 @@ def told_value(texts: list[str], values: list[Any], account: str | None = None) 
         for kind, pos, neg, aimed, _ in _events([text], values, account):
             if kind == "stay" and not pos and here & told:
                 continue
-            if kind == "retract" or (kind == "stay" and not pos):
+            if kind == "retract" and aimed == "earlier":   # what this reply states stands
+                undone, told = told or undone, (told & here) | pos
+            elif kind == "retract" or (kind == "stay" and not pos):
                 undone, told = told or undone, told - pos - neg if aimed else set()
             elif kind == "affirm":
                 told |= undone
