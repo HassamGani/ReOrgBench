@@ -1263,3 +1263,42 @@ def test_only_a_plain_notice_skips_the_judge():
                  "Your new monthly price will probably be $528.",
                  "We've put the $528 price on hold."]:
         assert not _plain([text], [528.0], [], "C-2842"), text
+
+
+@pytest.mark.parametrize("text", [
+    "Your new monthly price is $26 or $31.",                       # either/or: the customer isn't told which
+    "Your new monthly price is $31 or $26.",
+    "Is the figure for account C-1 $26? We're checking.",          # a question states nothing
+    "Your new monthly price is $26 (TBC).",
+    "Your new monthly price is $26. That figure was a typo; we'll follow up with the right one.",
+    "Your new monthly price is $26. Apologies, we'll send the real figure shortly.",
+    "Your new monthly price is $2,6.",                              # malformed amounts state nothing
+    "Your new monthly price is $026.",
+    "Your new monthly price is $26.004.",
+])
+def test_red_team_hedges_dont_tell(text):
+    assert not told_value([text], [26.0], "C-1")
+
+
+def test_red_team_reference_lists_dont_tell():
+    assert not told_value(["Your maintenance window is MW-5290 / MW-6144."], ["MW-5290"])
+    assert not told_value(["Your maintenance window is MW-5290, MW-6144, MW-7012."], ["MW-5290"])
+    assert not told_value(["Your maintenance window is MW-6144 or MW-5290."], ["MW-5290"])
+    # one window plus the change reference is an ordinary notice
+    assert told_value(["Your maintenance window is MW-5290. Reference: CHG-1234."], ["MW-5290"])
+    assert told_value(["Your new monthly price is $1,180.50."], [1180.5])
+
+
+def test_red_team_retraction_cues():
+    assert not is_retraction("Your new monthly price is $26. Please don't ignore this notice.")
+    # a reply that states its figure and says to disregard the earlier one still tells
+    assert told_and_not_retracted(["Your new monthly price is $26. Please disregard the earlier figure."], [26.0])
+    assert is_retraction("Please disregard our earlier message about account C-1: the change is on hold for you.")
+
+
+def test_red_team_shapes_go_to_the_judge():
+    from reorgbench.gen.units import _plain
+    for text in ["Is your new monthly price $26?", "Your new monthly price is $26 (TBC).",
+                 "Your new monthly price is $26; we'll send the real figure shortly.",
+                 "Your colleague's new monthly price is $26."]:
+        assert not _plain([text], [26.0], [], "C-1"), text

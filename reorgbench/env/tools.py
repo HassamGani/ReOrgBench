@@ -468,7 +468,7 @@ def _inbound(world: World, rnd: int, log: AccessLog) -> list[dict[str, Any]]:
                            "entries": sorted(o for o, d in world.iter("ledger.entries") if d.get("customer_id") == c
                                              or d.get("invoice_id") in it.get("invoices", [])),
                            "replies": {t: len((world.data(f"tickets/{t}") or {}).get("replies", []))
-                                       for t in it.get("tickets", [])}}
+                                       for t in [*it.get("tickets", []), it["ticket_id"]]}}
             changed = True
     if changed:
         world.put("inbound/tickets", cfg, log)
