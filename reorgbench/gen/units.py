@@ -454,7 +454,7 @@ def _events(texts: list[str], values: list[Any] | None, account: str | None = No
     what was sent earlier still stands) or None."""
     for text in texts:
         others = False
-        prev_cue = False
+        prev_cue = prev_earlier = False
         # a reply that names only some other account (not this customer's) is about that account throughout
         # a reply laying out options ("Option A: ... Option B: ...") states none of them as the customer's figure
         options = bool(_OPTIONS.search(text))
@@ -488,6 +488,11 @@ def _events(texts: list[str], values: list[Any] | None, account: str | None = No
             dup = bool(_DISREGARD.search(c) and _SPECIFIC.search(c))
             follows, others = others, third or dup
             kind, aimed = _cue(c)
+            # "this replaces the earlier figure we sent, so please disregard it": the "it" is that earlier figure
+            pron = re.search(r"\b(?:disregard\w*|ignore)\s+(?:it|that|them|those)\W*$", c)
+            if kind == "retract" and not aimed and pron and prev_earlier:
+                aimed = "earlier"
+            prev_earlier = bool(_EARLIER_FIG.search(c))
             if kind and (third or _IF.search(c) or (follows and re.match(r"\W*(?:this|that|it|which)\b", c))):
                 kind = None
             elif kind is None and not third and _NOTICE.search(c):
