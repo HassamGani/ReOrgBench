@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run python -m reorgbench.relay:*)",
+      "Bash(cd /home/user/rb-eval && uv run python -m reorgbench.relay:*)"
+    ]
+  }
+}
