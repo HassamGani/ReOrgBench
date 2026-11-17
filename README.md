@@ -1,5 +1,6 @@
 ---
 pretty_name: ReOrgBench
+viewer: false
 tags:
   - agents
   - multi-agent
